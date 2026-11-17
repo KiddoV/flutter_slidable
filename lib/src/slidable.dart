@@ -87,7 +87,7 @@ class Slidable extends StatefulWidget {
   /// The shape used to clip the action panes.
   ///
   /// When null, the action panes are clipped to a plain rectangle
-  /// (the upstream behavior). Set it to the same shape as the tile
+  /// (the default behavior). Set it to the same shape as the tile
   /// (for example a [RoundedSuperellipseBorder]) so the revealed
   /// actions are cut by that shape instead of a straight line.
   final ShapeBorder? actionPaneShape;
@@ -266,14 +266,23 @@ class _SlidableState extends State<Slidable>
       children: <Widget>[
         if (actionPane != null)
           Positioned.fill(
-            child: ClipPath(
-              clipper: _SlidableClipper(
-                axis: widget.direction,
-                controller: controller,
-                shape: widget.actionPaneShape,
-              ),
-              child: actionPane,
-            ),
+            child: widget.actionPaneShape == null
+                ? ClipRect(
+                    clipper: _SlidableClipper(
+                      axis: widget.direction,
+                      controller: controller,
+                    ),
+                    child: actionPane,
+                  )
+                : ClipPath(
+                    clipper: _SlidableShapeClipper(
+                      axis: widget.direction,
+                      controller: controller,
+                      shape: widget.actionPaneShape!,
+                      textDirection: Directionality.of(context),
+                    ),
+                    child: actionPane,
+                  ),
           ),
         content,
       ],
@@ -324,18 +333,17 @@ class _SlidableControllerScope extends InheritedWidget {
   }
 }
 
-class _SlidableClipper extends CustomClipper<Path> {
+class _SlidableClipper extends CustomClipper<Rect> {
   _SlidableClipper({
     required this.axis,
     required this.controller,
-    this.shape,
   }) : super(reclip: controller.animation);
 
   final Axis axis;
   final SlidableController controller;
-  final ShapeBorder? shape;
 
-  Rect _revealedRect(Size size) {
+  @override
+  Rect getClip(Size size) {
     switch (axis) {
       case Axis.horizontal:
         final double offset = controller.ratio * size.width;
@@ -358,14 +366,32 @@ class _SlidableClipper extends CustomClipper<Path> {
   }
 
   @override
+  Rect getApproximateClipRect(Size size) => getClip(size);
+
+  @override
+  bool shouldReclip(_SlidableClipper oldClipper) {
+    return oldClipper.axis != axis;
+  }
+}
+
+class _SlidableShapeClipper extends CustomClipper<Path> {
+  _SlidableShapeClipper({
+    required this.axis,
+    required this.controller,
+    required this.shape,
+    required this.textDirection,
+  }) : super(reclip: controller.animation);
+
+  final Axis axis;
+  final SlidableController controller;
+  final ShapeBorder shape;
+  final TextDirection textDirection;
+
+  @override
   Path getClip(Size size) {
-    final rect = _revealedRect(size);
-    final shape = this.shape;
-    if (shape == null) {
-      return Path()..addRect(rect);
-    }
     final shapePath = shape.getOuterPath(
       Rect.fromLTWH(0, 0, size.width, size.height),
+      textDirection: textDirection,
     );
     final double offset = axis == Axis.horizontal
         ? controller.ratio * size.width
@@ -376,9 +402,10 @@ class _SlidableClipper extends CustomClipper<Path> {
     return Path.combine(PathOperation.difference, shapePath, shifted);
   }
 
-
   @override
-  bool shouldReclip(_SlidableClipper oldClipper) {
-    return oldClipper.axis != axis || oldClipper.shape != shape;
+  bool shouldReclip(_SlidableShapeClipper oldClipper) {
+    return oldClipper.axis != axis ||
+        oldClipper.shape != shape ||
+        oldClipper.textDirection != textDirection;
   }
 }

@@ -1,3 +1,8 @@
+## Unreleased
+
+### Added
+* `actionPaneShape` parameter on `Slidable` to clip the action panes to a shape (for example a `RoundedSuperellipseBorder`) instead of a plain rectangle.
+
 ## 4.0.2
 
 ### Fixed
