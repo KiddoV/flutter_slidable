@@ -266,23 +266,24 @@ class _SlidableState extends State<Slidable>
       children: <Widget>[
         if (actionPane != null)
           Positioned.fill(
-            child: widget.actionPaneShape == null
-                ? ClipRect(
-                    clipper: _SlidableClipper(
-                      axis: widget.direction,
-                      controller: controller,
-                    ),
-                    child: actionPane,
-                  )
-                : ClipPath(
-                    clipper: _SlidableShapeClipper(
-                      axis: widget.direction,
-                      controller: controller,
-                      shape: widget.actionPaneShape!,
-                      textDirection: Directionality.of(context),
-                    ),
-                    child: actionPane,
+            child: switch (widget.actionPaneShape) {
+              null => ClipRect(
+                  clipper: _SlidableClipper(
+                    axis: widget.direction,
+                    controller: controller,
                   ),
+                  child: actionPane,
+                ),
+              final shape => ClipPath(
+                  clipper: _SlidableShapeClipper(
+                    axis: widget.direction,
+                    controller: controller,
+                    shape: shape,
+                    textDirection: Directionality.of(context),
+                  ),
+                  child: actionPane,
+                ),
+            },
           ),
         content,
       ],
